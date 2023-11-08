@@ -480,4 +480,4 @@ def selectNewMove(direction, legal):
               else:
                 return Directions.STOP
 
-    #print "Why am I here?"
+    print "Why am I here?"
