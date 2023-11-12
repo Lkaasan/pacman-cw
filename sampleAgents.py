@@ -42,6 +42,7 @@ class RandomAgent(Agent):
     def getAction(self, state):
         # Get the actions we can try, and remove "STOP" if that is one of them.
         legal = api.legalActions(state)
+        print api.whereAmI(state)
         if Directions.STOP in legal:
             legal.remove(Directions.STOP)
         # Random choice between the legal options.
