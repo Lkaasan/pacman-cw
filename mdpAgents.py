@@ -61,10 +61,10 @@ class MDPAgent(Agent):
         self.corners = api.corners(state)
         self.walls = api.walls(state)
         #self.map = initial_map(self.corners, self.walls)
-        print self.map
         
     # This is what gets run in between multiple games
     def final(self, state):
+        self.map = None
         print "Looks like the game just ended!"
 
     # For now I just move randomly
@@ -78,17 +78,26 @@ class MDPAgent(Agent):
         return api.makeMove(random.choice(legal), legal)
 
 def v_iterations(map, state):
-    print populatateRewards(api.food(state), api.ghosts(state), api.walls(state), api.corners(state), api.capsules(state))[1]
-
-def populatateRewards(f, g, w, co, ca):
-    m = initial_map(w, co)
-    xMax = co[2][1] + 1
-    yMax = co[1][0] + 1
+    #print populatateRewards(api.food(state), api.ghosts(state), api.walls(state), api.corners(state), api.capsules(state))
+    reward_map = populateRewards(state)
     
-    for i in range(yMax):
-        for j in range(xMax):
+                
+def populateRewards(state):
+    f = api.food(state)
+    g = api.ghosts(state)
+    w = api.walls(state)
+    co = api.corners(state)
+    ca = api.capsules(state)
+    #print co
+    
+    m = initial_map(w, co)
+    yMax = co[2][1] + 1
+    xMax = co[1][0] + 1
+    
+    for i in range(xMax):
+        for j in range(yMax):
             current_cell = (i, j)
-
+            
             if current_cell in f:
                 m[j][i] = FOOD_REWARD
             elif current_cell in g:
@@ -102,16 +111,16 @@ def populatateRewards(f, g, w, co, ca):
     return m
 
 def initial_map(walls, corners):
-    h = corners[1][0] + 1
-    w = corners[2][1] + 1
+    xMax = corners[1][0] + 1
+    yMax = corners[2][1] + 1
     pacman_map = []
-    for i in range(w):
+    for i in range(yMax):
         pacman_map.append([])
-        for j in range(h):
+        for j in range(xMax):
             pacman_map[i].append("  ")
 
-    for i in range(w):
-        for j in range(h):
+    for i in range(yMax):
+        for j in range(xMax):
             if (j, i) in walls:
                 pacman_map[i][j] = None
             else:
