@@ -78,51 +78,48 @@ class MDPAgent(Agent):
         return api.makeMove(random.choice(legal), legal)
 
 def v_iterations(map, state):
-    #print populatateRewards(api.food(state), api.ghosts(state), api.walls(state), api.corners(state), api.capsules(state))
     reward_map = populateRewards(state)
     
-                
+def bellmanEquation(currValue, currCell, xMax, yMax, map):
+    x = currCell[0]
+    y = currCell[1]
+    if currValue is None:
+        return None
+    
 def populateRewards(state):
     f = api.food(state)
     g = api.ghosts(state)
     w = api.walls(state)
     co = api.corners(state)
     ca = api.capsules(state)
-    #print co
     
     m = initial_map(w, co)
-    yMax = co[2][1] + 1
     xMax = co[1][0] + 1
+    yMax = co[2][1] + 1
     
     for i in range(xMax):
         for j in range(yMax):
-            current_cell = (i, j)
-            
-            if current_cell in f:
+            if (i, j) in f:
                 m[j][i] = FOOD_REWARD
-            elif current_cell in g:
+            if (i, j) in g:
                 m[j][i] = GHOST_REWARD
-            elif current_cell in w:
-                m[j][i] = None
-            elif current_cell in ca:
-                m[j][i] = CAPSULE_REWARD
-            else:
-                m[j][i] = EMPTY_REWARD
+            if (i, j) in ca:
+                m[j][i] = CAPSULE_REWARD 
+    print m
+    print
+                
     return m
 
 def initial_map(walls, corners):
     xMax = corners[1][0] + 1
     yMax = corners[2][1] + 1
-    pacman_map = []
-    for i in range(yMax):
-        pacman_map.append([])
-        for j in range(xMax):
-            pacman_map[i].append("  ")
+    pacman_map = [[" " for x in range(xMax)] for y in range(yMax)]
+    
 
-    for i in range(yMax):
-        for j in range(xMax):
-            if (j, i) in walls:
-                pacman_map[i][j] = None
+    for i in range(xMax):
+        for j in range(yMax):
+            if (i, j) in walls:
+                pacman_map[j][i] = None
             else:
-                pacman_map[i][j] = EMPTY_REWARD
+                pacman_map[j][i] = EMPTY_REWARD
     return pacman_map
