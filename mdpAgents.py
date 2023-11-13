@@ -86,6 +86,8 @@ def bellmanEquation(currValue, currCell, xMax, yMax, map):
     if currValue is None:
         return None
     
+    
+    
 def populateRewards(state):
     f = api.food(state)
     g = api.ghosts(state)
