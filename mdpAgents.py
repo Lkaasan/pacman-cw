@@ -174,22 +174,6 @@ def bellmannEquation(curr_value, currCell, width, height, map):
     return float(float(curr_value) + float(GAMMA) * float(max_val))
 
 def update_reward_map(reward_map, pacman, ghosts, h, w):
-    """
-    Update the reward map by applying mali to the cells that are close to pacman. The closest said
-    cell is to a ghost, the greater the malus is that is applied to the reward value of the cell.
-    Only a certain number of cells is taken into consideration. Specifically the same amount as the value
-    of the global constant DANGER_ZONE
-    @param reward_map: the reward map without any malus
-    @type reward_map: list
-    @param pacman: pacman's position
-    @type pacman: Tuple[int, int]
-    @param ghosts: a list of ghost positions
-    @type ghosts: list
-    @param h: the height of the map
-    @type h: int
-    @param w: the width of the map
-    @type w: int
-    """
     for n in get_neighbours(pacman, h, w):
         if n is not None and reward_map[n[0]][n[1]] is not None:
             [distance, cells] = distance_to_closest_ghost(n, ghosts, h, w)
@@ -203,20 +187,7 @@ def update_reward_map(reward_map, pacman, ghosts, h, w):
 
 
 def distance_to_closest_ghost(cell, ghosts, h, w):
-    """
-    Calculate the distance to the closest ghost as the value of cells explored before reaching the same position
-    as the closest ghost, using a frontier traversing algorithm.
-    @param cell: the cell from which to calculate the distance
-    @type cell: list
-    @param ghosts: the list containing the positions of ghosts
-    @type ghosts: list
-    @param h: the height of the map
-    @type h: int
-    @param w: the width of the map
-    @type w: w
-    @return: the distance to the ghost
-    @rtype: int
-    """
+
     frontier = util.Queue()
     frontier.push(cell)
     came_from = dict()
@@ -243,17 +214,6 @@ def distance_to_closest_ghost(cell, ghosts, h, w):
 
 
 def get_neighbours(cell, h, w):
-    """
-    Get the adjacent cells
-    @param cell: the cell for which to retrieve the neighbours
-    @type cell: list
-    @param h: the height of the map
-    @type h: int
-    @param w: the width of the map
-    @type w: int
-    @return: list of the neighbours' coordinates
-    @rtype: list
-    """
     x = cell[0]
     y = cell[1]
     north = south = east = west = None
