@@ -35,13 +35,12 @@ import random
 import game
 import util
 
-FOOD_REWARD = 10
-EMPTY_REWARD = -0.04
-CAPSULE_REWARD = 100
-GHOST_REWARD = -1000
-GAMMA = 0.9
-DANGER_ZONE_RATIO = 6
-DANGER = 500
+
+class Cell:
+
+    def __init__(self, value, coordinate):
+        self.value = value
+        self.coordinate = coordinate
 
 
 class MDPAgent(Agent):
@@ -50,9 +49,13 @@ class MDPAgent(Agent):
     def __init__(self):
         print "Starting up MDPAgent!"
         name = "Pacman" 
-        self.walls = None
-        self.corners = None
-        self.map = None
+        self.corners = self.walls = self.map = self.width = self.height = self.capsules = None
+        self.food_reward = 10
+        self.empty_reward = -0.04
+        self.capsule_reward = 100
+        self.ghost_reward = -1000
+        self.gamma = 0.9
+        self.repeat = False        
 
     # Gets run after an MDPAgent object is created and once there is
     # game state to access.
@@ -62,7 +65,11 @@ class MDPAgent(Agent):
         print api.whereAmI(state)
         self.corners = api.corners(state)
         self.walls = api.walls(state)
-        self.map = initial_map(self.corners, self.walls)
+        self.capsules = api.capsules(state)
+        self.width = self.corners[1][0] + 1
+        self.height = self.corners[2][1] + 1
+        self.map = self.create_empty_map()
+        
         
     # This is what gets run in between multiple games
     def final(self, state):
@@ -71,195 +78,130 @@ class MDPAgent(Agent):
 
     # For now I just move randomly
     def getAction(self, state):
-        self.map = v_iterations(self.map, state)
+        self.map = self.create_empty_map()
+        self.populate_rewards(state)
+        self.v_iteration(state)
         legal = api.legalActions(state)
         if Directions.STOP in legal:
             legal.remove(Directions.STOP)
         pacman_location = api.whereAmI(state)
-        [scores, actions] = get_action_scores(legal, self.map, pacman_location[0], pacman_location[1])
-        max_score_index = scores.index(max(scores))
+
+        if self.is_in_corner(pacman_location) or self.repeat == True:
+            self.repeat = not self.repeat
+            return api.makeMove(random.choice(legal), legal)
+        [scores, actions] = self.get_action_scores(legal, self.map, pacman_location[0], pacman_location[1])
         print scores
         print actions
+        max_score_index = scores.index(max(scores))
         choice = actions[max_score_index]
         return api.makeMove(choice, legal)
 
 
-def get_action_scores(legal, pacman_map, x, y):
-    action_scores = {}
-    for action in legal:
-        value = None
-        if action is Directions.NORTH:
-            value = pacman_map[y + 1][x]
-        elif action is Directions.SOUTH:
-            value = pacman_map[y - 1][x]
-        elif action is Directions.EAST:
-            value = pacman_map[y][x + 1]
-        elif action is Directions.WEST:
-            value = pacman_map[y][x - 1]
-        if value is not None:
-            action_scores[action] = value
 
-    scores = list(action_scores.values())
-    actions = list(action_scores.keys())
+    def get_action_scores(self, legal, pacman_map, x, y):
+        action_scores = {}
+        for action in legal:
+            value = None
+            if action is Directions.NORTH:
+                value = pacman_map[y + 1][x]
+            elif action is Directions.SOUTH:
+                value = pacman_map[y - 1][x]
+            elif action is Directions.EAST:
+                value = pacman_map[y][x + 1]
+            elif action is Directions.WEST:
+                value = pacman_map[y][x - 1]
+            if value is not None:
+                action_scores[action] = value
 
-    return scores, actions
+        scores = list(action_scores.values())
+        actions = list(action_scores.keys())
 
+        return scores, actions
 
-def v_iterations(map, state):
-    reward_map = populateRewards(state)
-    corners = api.corners(state)
-    width = corners[2][1] + 1
-    height = corners[1][0] + 1
-    
-    pacman = api.whereAmI(state)
-    pacman = (pacman[1], pacman[0])
-    update_reward_map(reward_map, pacman, api.ghosts(state), height, width)
+    def v_iteration(self, state):
+        for x in range (0, 10):
+            temp_map = self.create_empty_map()
+            for i in range(self.height):
+                for j in range(self.width):
+                    c = Cell(self.map[i][j], (i, j))
+                    temp_map[i][j] = self.bellmann_equation(c)
+            self.map = temp_map
 
-    for x in range(0, 10):
-        temp_map = initial_map(api.walls(state), corners)
-        for i in range(width):
-            for j in range(height):
-                current_cell_value = reward_map[i][j]
-                current_cell = (i, j)
-                temp_map[i][j] = bellmannEquation(current_cell_value, current_cell, width, height, reward_map)
-        reward_map = temp_map
-    return reward_map
-    
-def bellmannEquation(curr_value, currCell, width, height, map):
-    x = currCell[0]
-    y = currCell[1]
-    if curr_value is None:
-        return None
-    e = None
-    w = None
-    n = None
-    s = None
-    
-    if x < width - 1:
-        east = map[x + 1][y]
-    if x > 0:
-        west = map[x - 1][y]
-    if y < height - 1:
-        north = map[x][y + 1]
-    if y > 0:
-        south = map[x][y - 1]
-
-    if east is None:
-        east = - 1
-    if west is None:
-        west = -1
-    if north is None:
-        north = -1
-    if south is None:
-        south = -1
-    
-    if north is not None:
-        north_val = north * 0.8 + (east + west) * 0.1
-    else:
-        north_val = current
-    if south is not None:
-        south_val = south * 0.8 + (east + west) * 0.1
-    else:
-        south_val = current
-    if east is not None:
-        east_val = east * 0.8 + (north + south) * 0.1
-    else:
-        east_val = current
-    if west is not None:
-        west_val = west * 0.8 + (north + south) * 0.1
-    else:
-        west_val = current
+    def bellmann_equation(self, c):
+        x = c.coordinate[0]
+        y = c.coordinate[1]
+        if c.value is None:
+            return None
+        e = None
+        w = None
+        n = None
+        s = None
         
-    max_val = max([north_val, south_val, east_val, west_val])
-    return float(float(curr_value) + float(GAMMA) * float(max_val))
+        if x < self.width - 1:
+            e = self.map[x + 1][y]
+        if x > 0:
+            w = self.map[x - 1][y]
+        if y < self.height - 1:
+            n = self.map[x][y + 1]
+        if y > 0:
+            s = self.map[x][y - 1]
 
-def update_reward_map(reward_map, pacman, ghosts, h, w):
-    for n in get_neighbours(pacman, h, w):
-        if n is not None and reward_map[n[0]][n[1]] is not None:
-            [distance, cells] = distance_to_closest_ghost(n, ghosts, h, w)
-            if distance > 0:
-                # the further away we are from pacman, the less impactful the malus is
-                reward_map[n[0]][n[1]] -= (DANGER / distance)
-                for cell in cells:
-                    if reward_map[cell[0]][cell[1]] is not None:
-                        reward_map[cell[0]][cell[1]] -= (DANGER / distance)
+        if e is None:
+            e = - 1
+        if w is None:
+            w = -1
+        if n is None:
+            n = -1
+        if s is None:
+            s = -1
+        
+        if n is not None:
+            n_val = n * 0.8 + (e + w) * 0.1
+        else:
+            n_val = c.value
+        if s is not None:
+            s_val = s * 0.8 + (e + w) * 0.1
+        else:
+            s_val = c.value
+        if e is not None:
+            e_val = e * 0.8 + (n + s) * 0.1
+        else:
+            e_val = c.value
+        if w is not None:
+            w_val = w * 0.8 + (n + s) * 0.1
+        else:
+            w_val = c.value
+            
+        max_val = max([n_val, s_val, e_val, w_val])
+        return float(float(c.value) + float(self.gamma) * float(max_val))
 
+    def populate_rewards(self, state):
+        ghosts = api.ghosts(state)
+        food = api.food(state)
 
+        for i in range(self.width):
+            for j in range(self.height):
+                if (i, j) in ghosts:
+                    distance_to_ghost = self.distance_to_closest_ghost(state)
+                    self.map[j][i] = self.ghost_reward * (1.0 / distance_to_ghost)
+                elif (i, j) in self.capsules:
+                    self.map[j][i] = self.capsule_reward
+                elif (i, j) in food:
+                    self.map[j][i] = self.food_reward
 
-def distance_to_closest_ghost(cell, ghosts, h, w):
+    def create_empty_map(self):
+        p_map = [[" " for x in range(self.width)] for y in range(self.height)]
+        for i in range(self.width):
+            for j in range(self.height):
+                if (i, j) in self.walls:
+                    p_map[j][i] = None
+                else: 
+                    p_map[j][i] = self.empty_reward
+        return p_map
 
-    frontier = util.Queue()
-    frontier.push(cell)
-    came_from = dict()
-    came_from[cell] = None
-    distance = 0
-    found = False
-    cells = []
-    while not frontier.isEmpty() and distance < (h*w / DANGER_ZONE_RATIO):
-        current = frontier.pop()
-        cells.append(current)
-        distance += 1
-        if (current[1], current[0]) in ghosts:
-            found = True
-            break
+    def distance_to_closest_ghost(self, state):
 
-        for neighbour in get_neighbours(current, h, w):
-            if neighbour is not None and neighbour not in came_from:
-                frontier.push(neighbour)
-                came_from[neighbour] = current
-    if found:
-        return [distance, cells]
-    else:
-        return [0, cells]
+        return min(util.manhattanDistance(api.whereAmI(state), ghost) for ghost in api.ghosts(state))
 
-
-def get_neighbours(cell, h, w):
-    x = cell[0]
-    y = cell[1]
-    north = south = east = west = None
-    if y + 1 < h:
-        north = (x, y + 1)
-    if y - 1 > 0:
-        south = (x, y - 1)
-    if x + 1 < w:
-        east = (x + 1, y)
-    if x - 1 > 0:
-        west = (x - 1, y)
-
-    return [north, south, east, west]
-
-
-def populateRewards(state):
-    f = api.food(state)
-    g = api.ghosts(state)
-    w = api.walls(state)
-    co = api.corners(state)
-    ca = api.capsules(state)
-    
-    m = initial_map(w, co)
-    width = co[1][0] + 1
-    height = co[2][1] + 1
-    
-    for i in range(width):
-        for j in range(height):
-            if (i, j) in f:
-                m[j][i] = FOOD_REWARD
-            if (i, j) in g:
-                m[j][i] = GHOST_REWARD
-            if (i, j) in ca:
-                m[j][i] = CAPSULE_REWARD 
-    return m
-
-def initial_map(walls, corners):
-    width = corners[1][0] + 1
-    height = corners[2][1] + 1
-    pacman_map = [[" " for x in range(width)] for y in range(height)]
-    
-
-    for i in range(width):
-        for j in range(height):
-            if (i, j) in walls:
-                pacman_map[j][i] = None
-            else:
-                pacman_map[j][i] = EMPTY_REWARD
-    return pacman_map
+    def is_in_corner(self, location):
+        return location in [(1, 1), (1, self.height - 2), (self.width - 2, 1), (self.width - 2, self.height - 2)]
