@@ -53,9 +53,8 @@ class MDPAgent(Agent):
         self.food_reward = 10
         self.empty_reward = -0.04
         self.capsule_reward = 100
-        self.ghost_reward = -1000
+        self.ghost_reward = -100000
         self.gamma = 0.9
-        self.repeat = False        
 
     # Gets run after an MDPAgent object is created and once there is
     # game state to access.
@@ -65,7 +64,7 @@ class MDPAgent(Agent):
         print api.whereAmI(state)
         self.corners = api.corners(state)
         self.walls = api.walls(state)
-        self.capsules = api.capsules(state)
+        
         self.width = self.corners[1][0] + 1
         self.height = self.corners[2][1] + 1
         self.map = self.create_empty_map()
@@ -78,6 +77,7 @@ class MDPAgent(Agent):
 
     # For now I just move randomly
     def getAction(self, state):
+        self.capsules = api.capsules(state)
         self.map = self.create_empty_map()
         self.populate_rewards(state)
         self.v_iteration(state)
@@ -85,13 +85,7 @@ class MDPAgent(Agent):
         if Directions.STOP in legal:
             legal.remove(Directions.STOP)
         pacman_location = api.whereAmI(state)
-
-        if self.is_in_corner(pacman_location) or self.repeat == True:
-            self.repeat = not self.repeat
-            return api.makeMove(random.choice(legal), legal)
         [scores, actions] = self.get_action_scores(legal, self.map, pacman_location[0], pacman_location[1])
-        print scores
-        print actions
         max_score_index = scores.index(max(scores))
         choice = actions[max_score_index]
         return api.makeMove(choice, legal)
@@ -120,14 +114,15 @@ class MDPAgent(Agent):
 
     def v_iteration(self, state):
         for x in range (0, 10):
-            temp_map = self.create_empty_map()
+            empty_map = self.create_empty_map()
+            temp_map = self.map
             for i in range(self.height):
                 for j in range(self.width):
                     c = Cell(self.map[i][j], (i, j))
-                    temp_map[i][j] = self.bellmann_equation(c)
-            self.map = temp_map
+                    empty_map[i][j] = self.bellmann_equation(c, temp_map)
+            self.map = empty_map
 
-    def bellmann_equation(self, c):
+    def bellmann_equation(self, c, m):
         x = c.coordinate[0]
         y = c.coordinate[1]
         if c.value is None:
@@ -138,13 +133,13 @@ class MDPAgent(Agent):
         s = None
         
         if x < self.width - 1:
-            e = self.map[x + 1][y]
+            e = m[x + 1][y]
         if x > 0:
-            w = self.map[x - 1][y]
+            w = m[x - 1][y]
         if y < self.height - 1:
-            n = self.map[x][y + 1]
+            n = m[x][y + 1]
         if y > 0:
-            s = self.map[x][y - 1]
+            s = m[x][y - 1]
 
         if e is None:
             e = - 1
@@ -156,19 +151,19 @@ class MDPAgent(Agent):
             s = -1
         
         if n is not None:
-            n_val = n * 0.8 + (e + w) * 0.1
+            n_val = n * 0.8 + e * 0.1 + w * 0.1
         else:
             n_val = c.value
         if s is not None:
-            s_val = s * 0.8 + (e + w) * 0.1
+            s_val = s * 0.8 + e * 0.1 + w * 0.1
         else:
             s_val = c.value
         if e is not None:
-            e_val = e * 0.8 + (n + s) * 0.1
+            e_val = e * 0.8 + n * 0.1 + s * 0.1
         else:
             e_val = c.value
         if w is not None:
-            w_val = w * 0.8 + (n + s) * 0.1
+            w_val = w * 0.8 + n * 0.1 + s * 0.1
         else:
             w_val = c.value
             
@@ -188,6 +183,8 @@ class MDPAgent(Agent):
                     self.map[j][i] = self.capsule_reward
                 elif (i, j) in food:
                     self.map[j][i] = self.food_reward
+                elif (i, j) == (6, 9) or (i, j) == (6, 10):
+                    self.map[i][j] = -100
 
     def create_empty_map(self):
         p_map = [[" " for x in range(self.width)] for y in range(self.height)]
@@ -200,8 +197,20 @@ class MDPAgent(Agent):
         return p_map
 
     def distance_to_closest_ghost(self, state):
-
         return min(util.manhattanDistance(api.whereAmI(state), ghost) for ghost in api.ghosts(state))
-
-    def is_in_corner(self, location):
-        return location in [(1, 1), (1, self.height - 2), (self.width - 2, 1), (self.width - 2, self.height - 2)]
+    
+    def neighbours(self, location):
+        neighbours = []
+        x = location[0]
+        y = location[1]
+        if location[1] < self.height - 1:
+            neighbours.append((x, y + 1))
+        if location[1] > 0:
+            neighbours.append((x, y - 1))
+        if location[0] < self.width - 1:
+            neighbours.append((x + 1, y))
+        if location[0] > 0:
+            neighbours.append((x - 1, y))
+        return neighbours
+            
+        
