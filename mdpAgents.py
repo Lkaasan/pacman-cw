@@ -50,7 +50,7 @@ class MDPAgent(Agent):
         print "Starting up MDPAgent!"
         name = "Pacman" 
         self.corners = self.walls = self.map = self.width = self.height = self.capsules = None
-        self.food_reward = 10
+        self.food_reward = 20
         self.empty_reward = -0.04
         self.capsule_reward = 100
         self.ghost_reward = -100000
@@ -77,6 +77,7 @@ class MDPAgent(Agent):
 
     # For now I just move randomly
     def getAction(self, state):
+        print api.ghostStates(state)[0][1]
         self.capsules = api.capsules(state)
         self.map = self.create_empty_map()
         self.populate_rewards(state)
@@ -173,6 +174,7 @@ class MDPAgent(Agent):
     def populate_rewards(self, state):
         ghosts = api.ghosts(state)
         food = api.food(state)
+        ghosts_states = api.ghostStates(state)
 
         for i in range(self.width):
             for j in range(self.height):
