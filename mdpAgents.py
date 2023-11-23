@@ -55,6 +55,7 @@ class MDPAgent(Agent):
         self.capsule_reward = 100
         self.ghost_reward = -100000
         self.gamma = 0.9
+        self.scared_ghost_reward = 100000
 
     # Gets run after an MDPAgent object is created and once there is
     # game state to access.
@@ -77,7 +78,6 @@ class MDPAgent(Agent):
 
     # For now I just move randomly
     def getAction(self, state):
-        print api.ghostStates(state)[0][1]
         self.capsules = api.capsules(state)
         self.map = self.create_empty_map()
         self.populate_rewards(state)
@@ -90,8 +90,6 @@ class MDPAgent(Agent):
         max_score_index = scores.index(max(scores))
         choice = actions[max_score_index]
         return api.makeMove(choice, legal)
-
-
 
     def get_action_scores(self, legal, pacman_map, x, y):
         action_scores = {}
@@ -124,52 +122,22 @@ class MDPAgent(Agent):
             self.map = empty_map
 
     def bellmann_equation(self, c, m):
-        x = c.coordinate[0]
-        y = c.coordinate[1]
+        x, y = c.coordinate
+
         if c.value is None:
             return None
-        e = None
-        w = None
-        n = None
-        s = None
-        
-        if x < self.width - 1:
-            e = m[x + 1][y]
-        if x > 0:
-            w = m[x - 1][y]
-        if y < self.height - 1:
-            n = m[x][y + 1]
-        if y > 0:
-            s = m[x][y - 1]
 
-        if e is None:
-            e = - 1
-        if w is None:
-            w = -1
-        if n is None:
-            n = -1
-        if s is None:
-            s = -1
-        
-        if n is not None:
-            n_val = n * 0.8 + e * 0.1 + w * 0.1
-        else:
-            n_val = c.value
-        if s is not None:
-            s_val = s * 0.8 + e * 0.1 + w * 0.1
-        else:
-            s_val = c.value
-        if e is not None:
-            e_val = e * 0.8 + n * 0.1 + s * 0.1
-        else:
-            e_val = c.value
-        if w is not None:
-            w_val = w * 0.8 + n * 0.1 + s * 0.1
-        else:
-            w_val = c.value
-            
-        max_val = max([n_val, s_val, e_val, w_val])
-        return float(float(c.value) + float(self.gamma) * float(max_val))
+        neighbors = [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
+        valid_neighbors = [(nx, ny) for nx, ny in neighbors if 0 <= nx < self.width and 0 <= ny < self.height]
+
+        values = [m[nx][ny] if m[nx][ny] is not None else -1 for nx, ny in valid_neighbors]
+
+        weighted_values = [0.8 * v for v in values]
+        weighted_values.append(0.1 * c.value)  
+
+        max_val = max(weighted_values)
+        return c.value + self.gamma * max_val
+
 
     def populate_rewards(self, state):
         ghosts = api.ghosts(state)
@@ -178,10 +146,17 @@ class MDPAgent(Agent):
 
         for i in range(self.width):
             for j in range(self.height):
-                if (i, j) in ghosts:
-                    distance_to_ghost = self.distance_to_closest_ghost(state)
-                    self.map[j][i] = self.ghost_reward * (1.0 / distance_to_ghost)
-                elif (i, j) in self.capsules:
+                counter = 0
+                for ghost in ghosts:
+                    if (i, j) == ghost:
+                        if ghosts_states[counter][1] == 0:
+                            distance_to_ghost = self.distance_to_closest_ghost(state)
+                            self.map[j][i] = self.ghost_reward * (2.0 / distance_to_ghost)
+                        else:
+                            distance_to_ghost = self.distance_to_closest_ghost(state)
+                            self.map[j][i] = self.scared_ghost_reward * (1.0 * distance_to_ghost)
+                    counter = counter + 1
+                if (i, j) in self.capsules:
                     self.map[j][i] = self.capsule_reward
                 elif (i, j) in food:
                     self.map[j][i] = self.food_reward
@@ -189,7 +164,7 @@ class MDPAgent(Agent):
                     self.map[i][j] = -100
 
     def create_empty_map(self):
-        p_map = [[" " for x in range(self.width)] for y in range(self.height)]
+        p_map = [[" " for i in range(self.width)] for j in range(self.height)]
         for i in range(self.width):
             for j in range(self.height):
                 if (i, j) in self.walls:
