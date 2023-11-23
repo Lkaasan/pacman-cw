@@ -50,12 +50,12 @@ class MDPAgent(Agent):
         print "Starting up MDPAgent!"
         name = "Pacman" 
         self.corners = self.walls = self.map = self.width = self.height = self.capsules = None
-        self.food_reward = 20
+        self.food_reward = 10
         self.empty_reward = -0.04
         self.capsule_reward = 100
-        self.ghost_reward = -100000
+        self.ghost_reward = -1000
         self.gamma = 0.9
-        self.scared_ghost_reward = 100000
+        self.scared_ghost_reward = 1000
 
     # Gets run after an MDPAgent object is created and once there is
     # game state to access.
@@ -138,7 +138,6 @@ class MDPAgent(Agent):
         max_val = max(weighted_values)
         return c.value + self.gamma * max_val
 
-
     def populate_rewards(self, state):
         ghosts = api.ghosts(state)
         food = api.food(state)
@@ -150,18 +149,30 @@ class MDPAgent(Agent):
                 for ghost in ghosts:
                     if (i, j) == ghost:
                         if ghosts_states[counter][1] == 0:
-                            distance_to_ghost = self.distance_to_closest_ghost(state)
-                            self.map[j][i] = self.ghost_reward * (2.0 / distance_to_ghost)
+                            self.map[j][i] = self.ghost_reward 
                         else:
-                            distance_to_ghost = self.distance_to_closest_ghost(state)
-                            self.map[j][i] = self.scared_ghost_reward * (1.0 * distance_to_ghost)
-                    counter = counter + 1
+                            self.map[j][i] = self.scared_ghost_reward
+                    counter += 1
                 if (i, j) in self.capsules:
                     self.map[j][i] = self.capsule_reward
                 elif (i, j) in food:
                     self.map[j][i] = self.food_reward
                 elif (i, j) == (6, 9) or (i, j) == (6, 10):
                     self.map[i][j] = -100
+        counter = 0
+        for ghost in ghosts:
+            neighbours = self.neighbours(ghost)
+            for n in neighbours:
+                x = int(n[0])
+                y = int(n[1])
+                if self.map[y][x] is not None:
+                    if ghosts_states[counter][1] == 0:
+                        self.map[y][x] = self.map[y][x] - (600 * (1 / self.distance_to_closest_ghost(state)))
+                    else:
+                        self.map[y][x] = self.map[y][x] + (300 * (1 / self.distance_to_closest_ghost(state)))
+        counter += 1
+
+
 
     def create_empty_map(self):
         p_map = [[" " for i in range(self.width)] for j in range(self.height)]
@@ -178,15 +189,15 @@ class MDPAgent(Agent):
     
     def neighbours(self, location):
         neighbours = []
-        x = location[0]
+        x = location[0] 
         y = location[1]
-        if location[1] < self.height - 1:
+        if y < self.height - 1:
             neighbours.append((x, y + 1))
-        if location[1] > 0:
+        if y > 0:
             neighbours.append((x, y - 1))
-        if location[0] < self.width - 1:
+        if x < self.width - 1:
             neighbours.append((x + 1, y))
-        if location[0] > 0:
+        if x > 0:
             neighbours.append((x - 1, y))
         return neighbours
             
