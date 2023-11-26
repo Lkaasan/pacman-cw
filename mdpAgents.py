@@ -34,6 +34,7 @@ import api
 import random
 import game
 import util
+import time
 
 
 class Cell:
@@ -86,12 +87,43 @@ class MDPAgent(Agent):
         if Directions.STOP in legal:
             legal.remove(Directions.STOP)
         pacman_location = api.whereAmI(state)
+        self.move_towards_closest_food(legal, state)
         [scores, actions] = self.get_action_scores(legal, self.map, pacman_location[0], pacman_location[1])
         print actions 
         print scores
         max_score_index = scores.index(max(scores))
         choice = actions[max_score_index]
         return api.makeMove(choice, legal)
+    
+    def move_towards_closest_food(self, legal, state):
+        food = api.food(state)
+        pacman = api.whereAmI(state)
+        closest_food = self.find_closest_food(pacman, food)
+        print api.whereAmI(state)
+        print closest_food
+        print'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'
+        if pacman[0] > food[0]:
+            if self.map[pacman[1] + 1][pacman[0]] is not None:
+                self.map[pacman[1] + 1][pacman[0]] += 5
+        if pacman[1] < food[1]:
+            if self.map[pacman[1]][pacman[0] + 1] is not None:
+                self.map[pacman[1]][pacman[0] + 1] += 5
+        if pacman[0] > food[0]:
+            if self.map[pacman[1] - 1][pacman[0]] is not None:
+                self.map[pacman[1] - 1][pacman[0]] += 5
+        if pacman[1] > food[1]:
+            if self.map[pacman[1]][pacman[0] - 1] is not None:
+                self.map[pacman[1]][pacman[0] - 1] += 5
+        
+    def find_closest_food(self, pacman, food):
+        distance = 100
+        closest_food = ()
+        for f in food:
+            d = util.manhattanDistance(pacman, f)
+            if d < distance:
+                distance = d
+                closest_food = f
+        return closest_food
 
     def get_action_scores(self, legal, pacman_map, x, y):
         action_scores = {}
@@ -178,7 +210,7 @@ class MDPAgent(Agent):
                 elif (i, j) in food:
                     self.map[j][i] = self.food_reward
                 elif (i, j) == (6, 9) or (i, j) == (6, 10):
-                    self.map[i][j] = -10000
+                    self.map[i][j] = -100000
         
     def create_empty_map(self):
         p_map = [[" " for i in range(self.width)] for j in range(self.height)]
@@ -208,4 +240,13 @@ class MDPAgent(Agent):
         
         return neighbours
             
+    def prettyDisplay(self):       
+        for i in range(self.height):
+            for j in range(self.width):
+                # print grid elements with no newline
+                print self.map[self.height - (i + 1)][j],
+            # A new line after each line of the grid
+            print 
+        # A line after the grid
+        print
         
