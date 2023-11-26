@@ -87,10 +87,15 @@ class MDPAgent(Agent):
         if Directions.STOP in legal:
             legal.remove(Directions.STOP)
         pacman_location = api.whereAmI(state)
-        self.move_towards_closest_food(legal, state)
         [scores, actions] = self.get_action_scores(legal, self.map, pacman_location[0], pacman_location[1])
-        print actions 
-        print scores
+        # print actions 
+        # print scores
+        if all(score == scores[0] for score in scores):
+            # print 'yes'
+            self.move_towards_closest_food(legal, state)
+            [scores, actions] = self.get_action_scores(legal, self.map, pacman_location[0], pacman_location[1])
+            if all(score == scores[0] for score in scores):
+                return api.makeMove(random.choice(legal), legal)
         max_score_index = scores.index(max(scores))
         choice = actions[max_score_index]
         return api.makeMove(choice, legal)
@@ -99,21 +104,27 @@ class MDPAgent(Agent):
         food = api.food(state)
         pacman = api.whereAmI(state)
         closest_food = self.find_closest_food(pacman, food)
-        print api.whereAmI(state)
-        print closest_food
-        print'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'
-        if pacman[0] > food[0]:
-            if self.map[pacman[1] + 1][pacman[0]] is not None:
-                self.map[pacman[1] + 1][pacman[0]] += 5
-        if pacman[1] < food[1]:
+        
+        # print(api.whereAmI(state))
+        # print(closest_food)
+        # print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
+
+        if pacman[0] < closest_food[0]:
             if self.map[pacman[1]][pacman[0] + 1] is not None:
                 self.map[pacman[1]][pacman[0] + 1] += 5
-        if pacman[0] > food[0]:
-            if self.map[pacman[1] - 1][pacman[0]] is not None:
-                self.map[pacman[1] - 1][pacman[0]] += 5
-        if pacman[1] > food[1]:
+
+        if pacman[1] < closest_food[1]:
+            if self.map[pacman[1] + 1][pacman[0]] is not None:
+                self.map[pacman[1] + 1][pacman[0]] += 5
+
+        if pacman[0] > closest_food[0]:
             if self.map[pacman[1]][pacman[0] - 1] is not None:
                 self.map[pacman[1]][pacman[0] - 1] += 5
+
+        if pacman[1] > closest_food[1]:
+            if self.map[pacman[1] - 1][pacman[0]] is not None:
+                self.map[pacman[1] - 1][pacman[0]] += 5
+
         
     def find_closest_food(self, pacman, food):
         distance = 100
@@ -168,9 +179,9 @@ class MDPAgent(Agent):
                 y = int(n[1])
                 if self.map[y][x] is not None:
                     if ghosts_with_states[counter][1] == 0: 
-                            self.map[y][x] -= (1000 / self.distance_to_ghost(state, ghost))
+                        self.map[y][x] -= (1000 / self.distance_to_ghost(state, ghost))
                     else:
-                        self.map[y][x] += (300 / self.distance_to_ghost(state, ghost))
+                        self.map[y][x] += (600 / self.distance_to_ghost(state, ghost))
         counter += 1
         
     def bellmann_equation(self, c, m):
@@ -210,7 +221,7 @@ class MDPAgent(Agent):
                 elif (i, j) in food:
                     self.map[j][i] = self.food_reward
                 elif (i, j) == (6, 9) or (i, j) == (6, 10):
-                    self.map[i][j] = -100000
+                    self.map[i][j] = -100000000
         
     def create_empty_map(self):
         p_map = [[" " for i in range(self.width)] for j in range(self.height)]
