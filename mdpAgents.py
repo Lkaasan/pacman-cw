@@ -88,8 +88,6 @@ class MDPAgent(Agent):
             legal.remove(Directions.STOP)
         pacman_location = api.whereAmI(state)
         [scores, actions] = self.get_action_scores(legal, self.map, pacman_location[0], pacman_location[1])
-        # print actions 
-        # print scores
         if all(score == scores[0] for score in scores):
             # print 'yes'
             self.move_towards_closest_food(legal, state)
@@ -98,6 +96,10 @@ class MDPAgent(Agent):
                 return api.makeMove(random.choice(legal), legal)
         max_score_index = scores.index(max(scores))
         choice = actions[max_score_index]
+        
+        print actions 
+        print scores
+        print choice
         return api.makeMove(choice, legal)
     
     def move_towards_closest_food(self, legal, state):
@@ -171,6 +173,8 @@ class MDPAgent(Agent):
     def update_ghost_rewards(self, state): 
         ghosts = api.ghosts(state)
         ghosts_with_states = api.ghostStates(state)
+        pacman_location = api.whereAmI(state)
+        pacman_neighbours = self.neighbours(pacman_location)
         counter = 0
         for ghost in ghosts:
             neighbours = self.neighbours(ghost)
@@ -178,10 +182,16 @@ class MDPAgent(Agent):
                 x = int(n[0])
                 y = int(n[1])
                 if self.map[y][x] is not None:
-                    if ghosts_with_states[counter][1] == 0: 
-                        self.map[y][x] -= (1000 / self.distance_to_ghost(state, ghost))
+                    if n in pacman_neighbours:
+                        if ghosts_with_states[counter][1] == 0: 
+                            self.map[y][x] -= (200000)
+                        else:
+                            self.map[y][x] += (1000)
                     else:
-                        self.map[y][x] += (600 / self.distance_to_ghost(state, ghost))
+                        if ghosts_with_states[counter][1] == 0: 
+                            self.map[y][x] -= (1000 / self.distance_to_ghost(state, ghost))
+                        else:
+                            self.map[y][x] += (600 / self.distance_to_ghost(state, ghost))
         counter += 1
         
     def bellmann_equation(self, c, m):
@@ -220,8 +230,8 @@ class MDPAgent(Agent):
                     self.map[j][i] = self.capsule_reward
                 elif (i, j) in food:
                     self.map[j][i] = self.food_reward
-                elif (i, j) == (6, 9) or (i, j) == (6, 10):
-                    self.map[i][j] = -100000000
+                elif (i, j) == (9, 6) or (i, j) == (10, 6):
+                    self.map[j][i] = -100000000
         
     def create_empty_map(self):
         p_map = [[" " for i in range(self.width)] for j in range(self.height)]
