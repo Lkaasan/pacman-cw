@@ -93,23 +93,18 @@ class MDPAgent(Agent):
             [scores, actions] = self.get_action_scores(legal, self.map, pacman_location[0], pacman_location[1])
             if all(score == scores[0] for score in scores):
                 return api.makeMove(random.choice(legal), legal)
-        print scores
-        print actions
+        # print scores
+        # print actions
         max_score_index = scores.index(max(scores))
         choice = actions[max_score_index]
         
-        print choice
+        # print choice
         return api.makeMove(choice, legal)
     
     def move_towards_closest_food(self, legal, state):
         food = api.food(state)
         pacman = api.whereAmI(state)
         closest_food = self.find_closest_food(pacman, food)
-        
-        # print(api.whereAmI(state))
-        # print(closest_food)
-        # print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
-
         if pacman[0] < closest_food[0]:
             if self.map[pacman[1]][pacman[0] + 1] is not None:
                 self.map[pacman[1]][pacman[0] + 1] += 5
@@ -173,70 +168,37 @@ class MDPAgent(Agent):
         
 
     def update_ghost_rewards(self, state): 
-        # ghosts = api.ghosts(state)
-        # ghosts_with_states = api.ghostStates(state)
-        # pacman_location = api.whereAmI(state)
-        # pacman_neighbours = self.neighbours(pacman_location)
-        # counter = 0
-        # for ghost in ghosts:
-        #     neighbours = self.neighbours(ghost)
-        #     for n in neighbours:
-        #         x = int(n[0])
-        #         y = int(n[1])
-        #         if self.map[y][x] is not None:
-        #             if n in pacman_neighbours:
-        #                 if ghosts_with_states[counter][1] == 0: 
-        #                     self.map[y][x] -= (200000)
-        #                 else:
-        #                     self.map[y][x] += (1000)
-        #             else:
-        #                 if ghosts_with_states[counter][1] == 0: 
-        #                     self.map[y][x] -= (1000 / self.distance_to_ghost(state, ghost))
-        #                 else:
-        #                     self.map[y][x] += (600 / self.distance_to_ghost(state, ghost))
-        # counter += 1
-        for n in self.neighbours(api.whereAmI(state)):
-            # print n
-            # print self.map[n[1]][n[0]]
-            if n is not None and self.map[n[1]][n[0]] is not None:
-                [d, cells] = self.distance_to_closest_ghost(n, api.ghosts(state))
-                print [d, cells]
-                if d > 0:
-                    self.map[n[1]][n[0]] -= 100000 / d
-                    for cell in cells:
-                        if self.map[cell[1]][cell[0]] is not None:
-                            self.map[cell[1]][cell[0]] -= 100000 / d
-        # ghosts = api.ghosts(state)
-        # for ghost in ghosts:
-        #     neighbours = self.neighbours(ghost)
-        #     for n in neighbours:
-        #         n = (int(n[0]), int(n[1]))
-        #         if self.map[n[1]][n[0]] is not None:
-        #             self.map[n[1]][n[0]] -= (1000 / self.distance_to_ghost(state, ghost))
+        ghosts = api.ghosts(state)
+        ghosts_with_states = api.ghostStates(state)
+        counter = 0
+        for g in ghosts:
+            ghost_neighbours = self.neighbours(g, 1)
+            for n in ghost_neighbours:
+                x = int(n[0])
+                y = int(n[1])
+                if self.map[y][x] is not None:
+                    if ghosts_with_states[counter][1] == 0:
+                        self.map[y][x] = self.ghost_reward / 2
+                    else:
+                        self.map[y][x] = self.scared_ghost_reward / 2
+            counter += 1
              
-        
     def small_map_update_ghost_values(self, state):
         ghosts = api.ghosts(state)
         ghosts_with_states = api.ghostStates(state)
         pacman_location = api.whereAmI(state)
-        pacman_neighbours = self.neighbours(pacman_location)
+        pacman_neighbours = self.neighbours(pacman_location, 0)
         counter = 0
         for ghost in ghosts:
-            neighbours = self.neighbours(ghost)
+            neighbours = self.neighbours(ghost, 0)
             for n in neighbours:
                 x = int(n[0])
                 y = int(n[1])
                 if self.map[y][x] is not None:
                     if n in pacman_neighbours:
-                        if ghosts_with_states[counter][1] == 0: 
-                            self.map[y][x] -= (2000)
-                        else:
-                            self.map[y][x] += (1000)
+                        self.map[y][x] -= (2000)
                     else:
-                        if ghosts_with_states[counter][1] == 0: 
-                            self.map[y][x] -= (1000 / self.distance_to_ghost(state, ghost))
-                        else:
-                            self.map[y][x] += (600 / self.distance_to_ghost(state, ghost))
+                        self.map[y][x] -= (1000 / self.distance_to_ghost(state, ghost))
         counter += 1
             
         
@@ -261,23 +223,23 @@ class MDPAgent(Agent):
         ghosts = api.ghosts(state)
         food = api.food(state)
         ghosts_states = api.ghostStates(state)
-
+        
         for i in range(self.width):
             for j in range(self.height):
                 counter = 0
                 for ghost in ghosts:
                     if (i, j) == ghost:
-                        # if ghosts_states[counter][1] == 0:
-                        self.map[j][i] = self.ghost_reward 
-                        # else:
-                        #     self.map[j][i] = self.scared_ghost_reward
+                        if ghosts_states[counter][1] == 0:
+                            self.map[j][i] = self.ghost_reward 
+                        else:
+                            self.map[j][i] = self.scared_ghost_reward
                     counter += 1
                 if (i, j) in self.capsules:
                     self.map[j][i] = self.capsule_reward
                 elif (i, j) in food:
                     self.map[j][i] = self.food_reward
                 elif (i, j) == (9, 6) or (i, j) == (10, 6):
-                    self.map[j][i] = -100
+                    self.map[j][i] = -1000
         
     def create_empty_map(self):
         p_map = [[" " for i in range(self.width)] for j in range(self.height)]
@@ -292,42 +254,7 @@ class MDPAgent(Agent):
     def distance_to_ghost(self, state, ghost):
         return util.manhattanDistance(api.whereAmI(state), ghost)
     
-    # def distance_to_closest_ghost(self, cell, ghosts):
-    #     lowest_ghost = None
-    #     lowest_distance = 100
-    #     for g in ghosts:
-    #         d = util.manhattanDistance(cell, g)
-    #         if d < lowest_distance:
-    #             lowest_distance = d
-    #             lowest_ghost = g
-    #     return lowest_distance
-    
-    def distance_to_closest_ghost(self, cell, ghosts):
-        frontier = util.Queue()
-        frontier.push(cell)
-        came_from = dict()
-        came_from[cell] = None
-        distance = 0
-        found = False
-        cells = []
-        while not frontier.isEmpty() and distance < (self.height * self.width / 6):
-            current = frontier.pop()
-            cells.append(current)
-            distance += 1
-            if (current[1], current[0]) in ghosts:
-                found = True
-                break
-
-            for neighbour in self.neighbours(current):
-                if neighbour is not None and neighbour not in came_from:
-                    frontier.push(neighbour)
-                    came_from[neighbour] = current
-        if found:
-            return [distance, cells]
-        else:
-            return [0, cells]
-    
-    def neighbours(self, location):
+    def neighbours(self, location, t):
         neighbours = []
         x = location[0] 
         y = location[1]
@@ -339,6 +266,25 @@ class MDPAgent(Agent):
             neighbours.append((x + 1, y))
         if x > 0:
             neighbours.append((x - 1, y))
+        if t == 1:
+            if y < self.height - 2:
+                neighbours.append((x, y + 2))
+            if y > 1:
+                neighbours.append((x, y - 2))
+            if x < self.width - 2:
+                neighbours.append((x + 2, y))
+            if x > 1:
+                neighbours.append((x - 2, y))
+
+            if y < self.height - 1 and x < self.width - 1:
+                neighbours.append((x + 1, y + 1))
+            if y > 0 and x < self.width - 1:
+                neighbours.append((x + 1, y - 1))
+            if x < self.width - 1 and y > 0:
+                neighbours.append((x + 1, y - 1))
+            if x > 0 and y > 0:
+                neighbours.append((x - 1, y - 1))
+                
         return neighbours
             
     def prettyDisplay(self):       
