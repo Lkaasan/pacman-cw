@@ -54,7 +54,7 @@ class MDPAgent(Agent):
         self.food_reward = 10
         self.empty_reward = -0.04
         self.capsule_reward = 100
-        self.ghost_reward = -1000
+        self.ghost_reward = -200000
         self.gamma = 0.9
         self.scared_ghost_reward = 1000
 
@@ -258,7 +258,6 @@ class MDPAgent(Agent):
             neighbours.append((x + 1, y))
         if x > 0:
             neighbours.append((x - 1, y))
-        
         return neighbours
             
     def prettyDisplay(self):       
