@@ -4,7 +4,6 @@ import api
 import random
 import game
 import util
-import time
 
 
 """
@@ -51,11 +50,24 @@ class MDPAgent(Agent):
         self.height = self.corners[2][1] + 1
         self.map = self.create_empty_map()
         
-
+    """
+    Called when the game ends, and resets class variables
+    @param state: the current state of the game
+    """
     def final(self, state):
+        self.capsules = None
+        self.corners = None
+        self.walls = None
+        self.width = None
+        self.height = None
         self.map = None
         print "Looks like the game just ended!"
 
+    """
+    Gets the next action for pacman
+    @param state: current state of the game 
+    @return makeMove, returns the action to the api
+    """
     def getAction(self, state):
         self.capsules = api.capsules(state)
         self.map = self.create_empty_map()
@@ -67,17 +79,21 @@ class MDPAgent(Agent):
             legal.remove(Directions.STOP)
             
         pacman_location = api.whereAmI(state)
-        [scores, actions] = self.get_score_for_actions(legal, pacman_location[0], pacman_location[1])
+        scores, actions = self.get_score_for_actions(legal, pacman_location[0], pacman_location[1])
         
         if all(score == scores[0] for score in scores):
             self.move_towards_closest_food(legal, state)
             [scores, actions] = self.get_score_for_actions(legal, pacman_location[0], pacman_location[1])
             if all(score == scores[0] for score in scores):
                 return api.makeMove(random.choice(legal), legal)
-            
-        max_score_index = scores.index(max(scores))
-        choice = actions[max_score_index]
-        return api.makeMove(choice, legal)
+        index = 100
+        max_score = -100000000
+        for i in range(0, len(scores)):
+            if scores[i] > max_score:
+                index = i
+                max_score = scores[i]
+        move = actions[index]
+        return api.makeMove(move, legal)
     
     """
         Function that alters the map rewards when pacman is stuck with no path, to help move
@@ -253,7 +269,7 @@ class MDPAgent(Agent):
                 elif (i, j) in food:
                     self.map[j][i] = self.food_reward
                 elif (i, j) == (9, 6) or (i, j) == (10, 6):
-                    self.map[j][i] = -1000
+                    self.map[j][i] = -100000
         
     """
     Creates an empty map, only with empy cells and walls
@@ -268,6 +284,7 @@ class MDPAgent(Agent):
                 else: 
                     p_map[j][i] = self.empty_reward
         return p_map
+    
     """
     Returns the neighbouring cells of a location, can either be a small size of large size
     @param location of type tuple (int, int): location for neighbours to be found
